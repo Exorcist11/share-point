@@ -1,10 +1,11 @@
 import * as React from 'react';
 import { DetailsList, IColumn } from '@fluentui/react/lib/DetailsList';
-import { MarqueeSelection } from '@fluentui/react/lib/MarqueeSelection';
+import { Panel, PanelType } from '@fluentui/react/lib/Panel';
 import * as pnp from 'sp-pnp-js';
-import { ButtonCommandBarExample } from '../Button/ButtonBar';
+import { useBoolean } from '@fluentui/react-hooks';
 import { IIconProps, Stack, SelectionMode, Selection } from '@fluentui/react';
 import { CommandBarButton } from '@fluentui/react/lib/Button';
+import { FormEdit } from '../FormData/EditForm';
 
 interface IDetailsListBasicExampleItem {
     Id: string;
@@ -20,13 +21,17 @@ const editIcon: IIconProps = { iconName: 'Edit' };
 
 const TableDataFL: React.FC = () => {
     const [items, setItems] = React.useState<IDetailsListBasicExampleItem[]>([]);
-    // const [idUser, setIdUser] = React.useState<string>('');
+    const [isEdit, { setTrue: openEdit, setFalse: dismissEdit }] = useBoolean(false);
+    const [idItem, setIdItem] = React.useState<string>()
 
     const renderColumn5 = (item: IDetailsListBasicExampleItem, index: number, column: IColumn) => {
         return <Stack horizontal verticalAlign='center' style={{ textAlign: 'center' }}>
             <CommandBarButton
                 iconProps={editIcon}
-                onClick={() => handleUpdate(item.Id)}
+                onClick={() => {
+                    handleUpdate(item.Id);
+                    openEdit();
+                }}
             />
 
             <CommandBarButton
@@ -37,9 +42,8 @@ const TableDataFL: React.FC = () => {
     }
 
     const handleUpdate = (id: string) => {
-        console.log(id)
+        setIdItem(id)
     }
-
     const handleDelete = async (id: string) => {
         try {
             if (id) {
@@ -84,7 +88,6 @@ const TableDataFL: React.FC = () => {
 
     return (
         <div>
-            {/* <ButtonCommandBarExample idTicket={idUser} /> */}
             <DetailsList
                 items={items}
                 columns={_columns}
@@ -95,6 +98,16 @@ const TableDataFL: React.FC = () => {
                 ariaLabelForSelectAllCheckbox="Toggle selection for all items"
                 checkButtonAriaLabel="select row"
             />
+
+            <Panel
+                headerText="Edit Item"
+                isOpen={isEdit}
+                type={PanelType.medium}
+                onDismiss={dismissEdit}
+                closeButtonAriaLabel="Close"
+            >
+                <FormEdit id={idItem} />
+            </Panel>
 
         </div>
     );
