@@ -6,7 +6,7 @@ import TableDataFL from './DataDisplay/TableOfData';
 const HelloWorld: React.FC<IHelloWorldProps> = (props: any) => {
   return (
     <section>
-      <h1>List</h1>
+      <h1>Somethings</h1>
       <TableDataFL />
     </section>
   );
