@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { IIconProps, Stack, IStackStyles } from '@fluentui/react';
-import { CommandBarButton } from '@fluentui/react/lib/Button';
+import { DefaultButton } from '@fluentui/react/lib/Button';
 import { Panel, PanelType } from '@fluentui/react/lib/Panel';
 import { useBoolean } from '@fluentui/react-hooks';
 import { FormInsert } from '../FormData/FormData';
@@ -21,7 +21,7 @@ export const ButtonCommandBarExample: React.FunctionComponent<IButtonExampleProp
 
     return (
         <Stack horizontal styles={stackStyles}>
-            <CommandBarButton
+            <DefaultButton
                 iconProps={addIcon}
                 text="New item"
                 // split={true}

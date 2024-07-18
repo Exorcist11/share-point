@@ -2,15 +2,16 @@ import * as React from 'react';
 import { DetailsList, IColumn } from '@fluentui/react/lib/DetailsList';
 import { Panel, PanelType } from '@fluentui/react/lib/Panel';
 import * as pnp from 'sp-pnp-js';
-import { useBoolean } from '@fluentui/react-hooks';
+import { useBoolean, useConst } from '@fluentui/react-hooks';
 import { IIconProps, Stack, SelectionMode, Checkbox } from '@fluentui/react';
 import { CommandBarButton, DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { FormEdit } from '../FormData/EditForm';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { ButtonCommandBarExample } from '../Button/ButtonBar';
 import { FontIcon } from '@fluentui/react/lib/Icon';
+import { ContextualMenu, IContextualMenuProps, IContextualMenuItem, ContextualMenuItemType } from '@fluentui/react/lib/ContextualMenu';
 
-interface IDetailsListBasicExampleItem {
+interface IListItem {
     Id: string;
     title: string;
     category: string;
@@ -25,16 +26,19 @@ const editIcon: IIconProps = { iconName: 'Edit' };
 const stackTokens = { childrenGap: 10 };
 
 const TableDataFL: React.FC = () => {
-    const [items, setItems] = React.useState<IDetailsListBasicExampleItem[]>([]);
-    const [temp, setTemp] = React.useState<IDetailsListBasicExampleItem[]>([]);
+    const [items, setItems] = React.useState<IListItem[]>([]);
+    const [temp, setTemp] = React.useState<IListItem[]>([]);
     const [isEdit, { setTrue: openEdit, setFalse: dismissEdit }] = useBoolean(false);
     const [idItem, setIdItem] = React.useState<string>('');
     const [sortedColumn, setSortedColumn] = React.useState<string | undefined>(undefined);
     const [isSortedDescending, setIsSortedDescending] = React.useState<boolean>(false);
     const [isOpen, { setTrue: openPanel, setFalse: dismissPanel }] = useBoolean(false);
     const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>([]);
+    const [menuTarget, setMenuTarget] = React.useState<HTMLElement | undefined>(undefined);
+    const [menuProps, setMenuProps] = React.useState<IContextualMenuProps | undefined>(undefined);
+    const [genres, setGenres] = React.useState<string[]>([])
 
-    const renderColumn5 = (item: IDetailsListBasicExampleItem, index: number, column: IColumn) => {
+    const renderColumn5 = (item: IListItem, index: number, column: IColumn) => {
         return (
             <Stack horizontal verticalAlign='center' style={{ textAlign: 'center' }}>
                 <CommandBarButton
@@ -68,10 +72,21 @@ const TableDataFL: React.FC = () => {
         }
     };
 
-    const handleColumnClick = (columnName: string) => {
+    const handleColumnClick = (columnName: string, ev: React.MouseEvent<HTMLElement>) => {
         const isSortedDescendingNew = sortedColumn === columnName ? !isSortedDescending : false;
         setIsSortedDescending(isSortedDescendingNew);
         setSortedColumn(columnName);
+
+        if (columnName === 'status') {
+            setMenuProps({
+                items: menuItems,
+                target: ev.currentTarget as HTMLElement,
+                directionalHint: 12,
+                onDismiss: () => setMenuProps(undefined),
+            });
+            setMenuTarget(ev.currentTarget as HTMLElement);
+            return;
+        }
 
         const sortedItems = [...items].sort((a, b) => {
             const firstValue = a[columnName];
@@ -87,10 +102,26 @@ const TableDataFL: React.FC = () => {
         setItems(sortedItems);
     };
 
+    const handleSort = (ascending: boolean) => {
+        const sortedItems = [...items].sort((a, b) => {
+            const firstValue = a[sortedColumn as keyof IListItem];
+            const secondValue = b[sortedColumn as keyof IListItem];
+
+            if (ascending) {
+                return firstValue > secondValue ? 1 : -1;
+            } else {
+                return firstValue > secondValue ? -1 : 1;
+            }
+        });
+
+        setItems(sortedItems);
+        setIsSortedDescending(!ascending);
+    };
+
     const fetchTickets = async () => {
         try {
             const response = await pnp.sp.web.lists.getByTitle('Information').items.get();
-            const formattedTickets: IDetailsListBasicExampleItem[] = response.map((item: any) => ({
+            const formattedTickets: IListItem[] = response.map((item: any) => ({
                 Id: item.ID.toString(),
                 title: item.Title,
                 category: item.CategoryV2,
@@ -100,6 +131,9 @@ const TableDataFL: React.FC = () => {
             }));
             setItems(formattedTickets);
             setTemp(formattedTickets);
+            const uniqueStatuses = Array.from(new Set(formattedTickets.map(ticket => ticket.status)));
+            setGenres(uniqueStatuses);
+
         } catch (error) {
             console.error('Error fetching tickets:', error);
         }
@@ -138,8 +172,12 @@ const TableDataFL: React.FC = () => {
     };
 
     const handleFind = () => {
-        const filteredItems = temp.filter(item => selectedStatuses.includes(item.status));
-        setItems(filteredItems);
+        if (selectedStatuses.length === 0) {
+            setItems(temp);
+        } else {
+            const filteredItems = temp.filter(item => selectedStatuses.includes(item.status));
+            setItems(filteredItems);
+        }
         dismissPanel();
     };
 
@@ -164,7 +202,7 @@ const TableDataFL: React.FC = () => {
             sortAscendingAriaLabel: 'Sorted A to Z',
             sortDescendingAriaLabel: 'Sorted Z to A',
             onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-                handleColumnClick('title');
+                handleColumnClick('title', ev);
             },
             isPadded: true,
             onRenderHeader: (props, defaultRender) => (
@@ -182,7 +220,7 @@ const TableDataFL: React.FC = () => {
             maxWidth: 200,
             isResizable: true,
             onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-                handleColumnClick('category');
+                handleColumnClick('category', ev);
             },
             onRenderHeader: (props, defaultRender) => (
                 <div>
@@ -199,7 +237,7 @@ const TableDataFL: React.FC = () => {
             maxWidth: 200,
             isResizable: true,
             onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-                handleColumnClick('description');
+                handleColumnClick('description', ev);
             },
             onRenderHeader: (props, defaultRender) => (
                 <div>
@@ -215,7 +253,41 @@ const TableDataFL: React.FC = () => {
             minWidth: 100,
             maxWidth: 200,
             isResizable: true,
-            onColumnClick: openPanel,
+            onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+                handleColumnClick('status', ev);
+            },
+            onRenderHeader: (props, defaultRender) => (
+                <div>
+                    {defaultRender(props)}
+                    {getSortIcon('status')}
+                </div>
+            ),
+        },
+    ];
+    const handleFilterAndOpenPanel = () => {
+        openPanel();
+
+
+    };
+    const menuItems: IContextualMenuItem[] = [
+        {
+            key: 'atoz',
+            text: 'A to Z',
+            onClick: () => handleSort(true),
+        },
+        {
+            key: 'ztoa',
+            text: 'Z to A',
+            onClick: () => handleSort(false),
+        },
+        {
+            key: 'divider_1',
+            itemType: ContextualMenuItemType.Divider,
+        },
+        {
+            key: 'filter',
+            text: 'Filter',
+            onClick: handleFilterAndOpenPanel,
         },
     ];
 
@@ -227,8 +299,24 @@ const TableDataFL: React.FC = () => {
 
     return (
         <div>
-            <TextField label="Search by title:" onChange={onChangeText} />
-            <ButtonCommandBarExample />
+            <Stack horizontal style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <ButtonCommandBarExample />
+                <TextField placeholder="Search by title..." onChange={onChangeText} />
+            </Stack>
+            {
+                selectedStatuses.length > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} >
+                        <p>Status: </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {selectedStatuses.map((status) => (
+                                <div key={status} style={{ border: '1px solid', borderRadius: '12px', height: 'fit-content', padding: '4px 16px', margin: '0' }}>
+                                    {status}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )
+            }
             <DetailsList
                 items={items}
                 columns={_columns}
@@ -255,9 +343,14 @@ const TableDataFL: React.FC = () => {
                 closeButtonAriaLabel="Close"
             >
                 <Stack tokens={stackTokens}>
-                    {['Draft', 'On Going', 'Completed', 'Approved', 'Reject'].map(
+                    {genres.map(
                         (status) => (
-                            <Checkbox label={status} key={status} onChange={(e, isChecked) => _onChange(status, isChecked)} />
+                            <Checkbox
+                                label={status}
+                                key={status}
+                                checked={selectedStatuses.includes(status)}
+                                onChange={(e, isChecked) => _onChange(status, isChecked)}
+                            />
                         )
                     )}
                     <Stack horizontal tokens={stackTokens}>
@@ -266,6 +359,13 @@ const TableDataFL: React.FC = () => {
                     </Stack>
                 </Stack>
             </Panel>
+
+            {menuProps && <ContextualMenu
+                items={menuProps.items}
+                target={menuTarget}
+                onDismiss={menuProps.onDismiss}
+                shouldFocusOnMount={true}
+            />}
         </div>
     );
 };
