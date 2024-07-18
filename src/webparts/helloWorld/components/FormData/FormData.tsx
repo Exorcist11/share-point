@@ -83,8 +83,6 @@ export const FormInsert: React.FC = () => {
         dropdown: { width: 300 },
     };
 
-
-
     const optionsManager: IDropdownOption[] = [
         ...group.map(item => ({
             key: item.Id,

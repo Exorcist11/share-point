@@ -20,7 +20,7 @@ export const ButtonCommandBarExample: React.FunctionComponent<IButtonExampleProp
     const [isOpen, { setTrue: openPanel, setFalse: dismissPanel }] = useBoolean(false);
 
     return (
-        <Stack horizontal styles={stackStyles}>
+        <Stack>
             <DefaultButton
                 iconProps={addIcon}
                 text="New item"

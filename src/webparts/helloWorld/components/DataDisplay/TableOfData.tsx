@@ -2,7 +2,7 @@ import * as React from 'react';
 import { DetailsList, IColumn } from '@fluentui/react/lib/DetailsList';
 import { Panel, PanelType } from '@fluentui/react/lib/Panel';
 import * as pnp from 'sp-pnp-js';
-import { useBoolean, useConst } from '@fluentui/react-hooks';
+import { useBoolean } from '@fluentui/react-hooks';
 import { IIconProps, Stack, SelectionMode, Checkbox } from '@fluentui/react';
 import { CommandBarButton, DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { FormEdit } from '../FormData/EditForm';
@@ -14,29 +14,33 @@ import { ContextualMenu, IContextualMenuProps, IContextualMenuItem, ContextualMe
 interface IListItem {
     Id: string;
     title: string;
-    category: string;
-    description: string;
-    status: string;
-    requester: string;
     [key: string]: any;
+}
+
+interface TableDataFLProps {
+    title: string;
 }
 
 const deleteIcon: IIconProps = { iconName: 'Delete' };
 const editIcon: IIconProps = { iconName: 'Edit' };
 const stackTokens = { childrenGap: 10 };
 
-const TableDataFL: React.FC = () => {
-    const [items, setItems] = React.useState<IListItem[]>([]);
+const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
+    const [detailList, setDetailList] = React.useState([])
     const [temp, setTemp] = React.useState<IListItem[]>([]);
     const [isEdit, { setTrue: openEdit, setFalse: dismissEdit }] = useBoolean(false);
     const [idItem, setIdItem] = React.useState<string>('');
-    const [sortedColumn, setSortedColumn] = React.useState<string | undefined>(undefined);
-    const [isSortedDescending, setIsSortedDescending] = React.useState<boolean>(false);
+
+    const [status, setStatus] = React.useState([])
     const [isOpen, { setTrue: openPanel, setFalse: dismissPanel }] = useBoolean(false);
     const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>([]);
     const [menuTarget, setMenuTarget] = React.useState<HTMLElement | undefined>(undefined);
     const [menuProps, setMenuProps] = React.useState<IContextualMenuProps | undefined>(undefined);
     const [genres, setGenres] = React.useState<string[]>([])
+    const [columns, setColumns] = React.useState([])
+    const [pickColumn, setPickColumn] = React.useState('')
+
+
 
     const renderColumn5 = (item: IListItem, index: number, column: IColumn) => {
         return (
@@ -63,103 +67,47 @@ const TableDataFL: React.FC = () => {
     const handleDelete = async (id: string) => {
         try {
             if (id) {
-                await pnp.sp.web.lists.getByTitle('Information').items.getById(parseInt(id)).delete();
-                const updatedItems = items.filter(item => item.Id !== id);
-                setItems(updatedItems);
+                await pnp.sp.web.lists.getByTitle(title).items.getById(parseInt(id)).delete();
+                const updatedItems = detailList.filter(item => item.Id !== id);
+                setDetailList(updatedItems);
             }
         } catch (error) {
             console.error(`Error deleting ticket with ID ${id}:`, error);
         }
     };
 
-    const handleColumnClick = (columnName: string, ev: React.MouseEvent<HTMLElement>) => {
-        const isSortedDescendingNew = sortedColumn === columnName ? !isSortedDescending : false;
-        setIsSortedDescending(isSortedDescendingNew);
-        setSortedColumn(columnName);
 
-        if (columnName === 'status') {
-            setMenuProps({
-                items: menuItems,
-                target: ev.currentTarget as HTMLElement,
-                directionalHint: 12,
-                onDismiss: () => setMenuProps(undefined),
-            });
-            setMenuTarget(ev.currentTarget as HTMLElement);
-            return;
-        }
-
-        const sortedItems = [...items].sort((a, b) => {
-            const firstValue = a[columnName];
-            const secondValue = b[columnName];
-
-            if (isSortedDescendingNew) {
-                return firstValue > secondValue ? -1 : 1;
-            } else {
-                return firstValue > secondValue ? 1 : -1;
-            }
-        });
-
-        setItems(sortedItems);
-    };
-
-    const handleSort = (ascending: boolean) => {
-        const sortedItems = [...items].sort((a, b) => {
-            const firstValue = a[sortedColumn as keyof IListItem];
-            const secondValue = b[sortedColumn as keyof IListItem];
-
-            if (ascending) {
-                return firstValue > secondValue ? 1 : -1;
-            } else {
-                return firstValue > secondValue ? -1 : 1;
-            }
-        });
-
-        setItems(sortedItems);
-        setIsSortedDescending(!ascending);
-    };
 
     const fetchTickets = async () => {
         try {
-            const response = await pnp.sp.web.lists.getByTitle('Information').items.get();
-            const formattedTickets: IListItem[] = response.map((item: any) => ({
-                Id: item.ID.toString(),
-                title: item.Title,
-                category: item.CategoryV2,
-                description: item.Description,
-                status: item.Status,
-                requester: item.RequestorId,
-            }));
-            setItems(formattedTickets);
-            setTemp(formattedTickets);
-            const uniqueStatuses = Array.from(new Set(formattedTickets.map(ticket => ticket.status)));
-            setGenres(uniqueStatuses);
-
+            const response = await pnp.sp.web.lists.getByTitle(title).items.get();
+            setDetailList(response)
+            setTemp(response)
         } catch (error) {
             console.error('Error fetching tickets:', error);
         }
     };
 
+    const fetchColumns = async () => {
+        try {
+            const response = await pnp.sp.web.lists.getByTitle(title).fields.filter('CanBeDeleted eq true').get();
+            setColumns(response)
+        } catch (error) {
+            console.error('Error fetching columns: ', error)
+        }
+    }
+
     const onChangeText = (ev: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const filterText = ev.target.value.toLowerCase();
 
         const filteredTickets = temp.filter(item =>
-            item.title.toLowerCase().includes(filterText)
+            item.Title.toLowerCase().includes(filterText)
         );
 
-        setItems(filteredTickets);
+        setDetailList(filteredTickets);
     };
 
-    const getSortIcon = (columnName: string) => {
-        if (sortedColumn === columnName) {
-            return (
-                <FontIcon
-                    iconName={isSortedDescending ? 'SortDown' : 'SortUp'}
-                    style={{ paddingLeft: 8 }}
-                />
-            );
-        }
-        return null;
-    };
+
 
     const _onChange = (status: string, isChecked?: boolean) => {
         setSelectedStatuses(prevStatuses => {
@@ -171,14 +119,15 @@ const TableDataFL: React.FC = () => {
         });
     };
 
-    const handleFind = () => {
-        if (selectedStatuses.length === 0) {
-            setItems(temp);
-        } else {
-            const filteredItems = temp.filter(item => selectedStatuses.includes(item.status));
-            setItems(filteredItems);
-        }
-        dismissPanel();
+    const handleColumnClick = (columnName: string, ev: React.MouseEvent<HTMLElement>) => {
+        setMenuProps({
+            items: menuItems(columnName),
+            target: ev.currentTarget as HTMLElement,
+            directionalHint: 12,
+            onDismiss: () => setMenuProps(undefined),
+        });
+        setMenuTarget(ev.currentTarget as HTMLElement);
+        return;
     };
 
     const _columns: IColumn[] = [
@@ -194,7 +143,7 @@ const TableDataFL: React.FC = () => {
         {
             key: 'column2',
             name: 'Title',
-            fieldName: 'title',
+            fieldName: 'Title',
             minWidth: 100,
             maxWidth: 200,
             isResizable: true,
@@ -202,83 +151,88 @@ const TableDataFL: React.FC = () => {
             sortAscendingAriaLabel: 'Sorted A to Z',
             sortDescendingAriaLabel: 'Sorted Z to A',
             onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-                handleColumnClick('title', ev);
+                handleColumnClick('Title', ev);
             },
             isPadded: true,
             onRenderHeader: (props, defaultRender) => (
                 <div>
                     {defaultRender(props)}
-                    {getSortIcon('title')}
                 </div>
             ),
-        },
-        {
-            key: 'column3',
-            name: 'Category',
-            fieldName: 'category',
-            minWidth: 100,
-            maxWidth: 200,
-            isResizable: true,
-            onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-                handleColumnClick('category', ev);
-            },
-            onRenderHeader: (props, defaultRender) => (
-                <div>
-                    {defaultRender(props)}
-                    {getSortIcon('category')}
-                </div>
-            ),
-        },
-        {
-            key: 'column4',
-            name: 'Description',
-            fieldName: 'description',
-            minWidth: 100,
-            maxWidth: 200,
-            isResizable: true,
-            onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-                handleColumnClick('description', ev);
-            },
-            onRenderHeader: (props, defaultRender) => (
-                <div>
-                    {defaultRender(props)}
-                    {getSortIcon('description')}
-                </div>
-            ),
-        },
-        {
-            key: 'column5',
-            name: 'Status',
-            fieldName: 'status',
-            minWidth: 100,
-            maxWidth: 200,
-            isResizable: true,
-            onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
-                handleColumnClick('status', ev);
-            },
-            onRenderHeader: (props, defaultRender) => (
-                <div>
-                    {defaultRender(props)}
-                    {getSortIcon('status')}
-                </div>
-            ),
-        },
+        }
     ];
-    const handleFilterAndOpenPanel = () => {
+
+    for (let i = 0; i < columns.length; i++) {
+        const itemNeed: IColumn = {
+            key: `column${i + 2}`,
+            name: columns[i].Title,
+            fieldName: columns[i].EntityPropertyName,
+            minWidth: 100,
+            maxWidth: 200,
+            isResizable: true,
+            isSortedDescending: false,
+            sortAscendingAriaLabel: 'Sorted A to Z',
+            sortDescendingAriaLabel: 'Sorted Z to A',
+            onColumnClick: (ev: React.MouseEvent<HTMLElement>, column: IColumn) => {
+                handleColumnClick(columns[i].EntityPropertyName, ev);
+            },
+            isPadded: true,
+            onRenderHeader: (props, defaultRender) => (
+                <div>
+                    {defaultRender(props)}
+                </div>
+            ),
+        }
+        _columns.push(itemNeed)
+    }
+
+    const handleFind = async (columnName: string) => {
+        // const uniqueTickets = Array.from(new Set(detailList.map((item) => item[columnName])));
+        // setGenres(uniqueTickets);
+        // setPickColumn(columnName)
+        if (selectedStatuses.length === 0) {
+            setDetailList(temp);
+        } else {
+            const filteredItems = temp.filter(item => selectedStatuses.includes(item[columnName]));
+            setDetailList(filteredItems);
+            setStatus(genres)
+        }
+        dismissPanel();
+    };
+
+    const handleFilterAndOpenPanel = async (columnName: any) => {
+        const uniqueTickets = Array.from(new Set(detailList.map((item) => item[columnName])));
+        setGenres(uniqueTickets);
+        setPickColumn(columnName)
         openPanel();
 
-
     };
-    const menuItems: IContextualMenuItem[] = [
+
+    const handleSort = (columnName: string, isSortedDescending: boolean) => {
+        const sortedItems = [...detailList].sort((a, b) => {
+            if (a[columnName] < b[columnName]) {
+                return isSortedDescending ? 1 : -1;
+            }
+            if (a[columnName] > b[columnName]) {
+                return isSortedDescending ? -1 : 1;
+            }
+            return 0;
+        });
+
+        setDetailList(sortedItems);
+    }
+
+
+    const menuItems = (columnName: string): IContextualMenuItem[] => [
         {
             key: 'atoz',
             text: 'A to Z',
-            onClick: () => handleSort(true),
+            onClick: () => handleSort(columnName, false),
         },
         {
             key: 'ztoa',
             text: 'Z to A',
-            onClick: () => handleSort(false),
+            onClick: () => handleSort(columnName, true),
         },
         {
             key: 'divider_1',
@@ -287,7 +241,7 @@ const TableDataFL: React.FC = () => {
         {
             key: 'filter',
             text: 'Filter',
-            onClick: handleFilterAndOpenPanel,
+            onClick: () => handleFilterAndOpenPanel(columnName),
         },
     ];
 
@@ -295,22 +249,27 @@ const TableDataFL: React.FC = () => {
         fetchTickets().catch((error) => {
             console.error('Error in fetchTickets useEffect:', error);
         });
-    }, []);
+        fetchColumns().catch((error) => {
+            console.error('Error in fetchColumns useEffect:', error);
+        });
+    }, [title]);
+
 
     return (
-        <div>
+        <div style={{ marginTop: '30px' }}>
             <Stack horizontal style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <ButtonCommandBarExample />
                 <TextField placeholder="Search by title..." onChange={onChangeText} />
             </Stack>
             {
-                selectedStatuses.length > 0 && (
+                status.length > 0 && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} >
                         <p>Status: </p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {selectedStatuses.map((status) => (
-                                <div key={status} style={{ border: '1px solid', borderRadius: '12px', height: 'fit-content', padding: '4px 16px', margin: '0' }}>
-                                    {status}
+                                <div key={status} style={{ border: '1px solid', borderRadius: '12px', height: 'fit-content', padding: '4px 16px', margin: '0', display: 'flex', alignItems: 'end', gap: '8px' }}>
+                                    <div>{status}</div>
+                                    <FontIcon aria-label="CalculatorMultiply" iconName="CalculatorMultiply" style={{ cursor: 'pointer' }} />
                                 </div>
                             ))}
                         </div>
@@ -318,7 +277,7 @@ const TableDataFL: React.FC = () => {
                 )
             }
             <DetailsList
-                items={items}
+                items={detailList}
                 columns={_columns}
                 setKey="set"
                 selectionMode={SelectionMode.none}
@@ -336,8 +295,9 @@ const TableDataFL: React.FC = () => {
             >
                 <FormEdit id={idItem} />
             </Panel>
+
             <Panel
-                headerText="Select Status"
+                headerText={`Filter by ${pickColumn}`}
                 isOpen={isOpen}
                 onDismiss={dismissPanel}
                 closeButtonAriaLabel="Close"
@@ -354,7 +314,7 @@ const TableDataFL: React.FC = () => {
                         )
                     )}
                     <Stack horizontal tokens={stackTokens}>
-                        <PrimaryButton text='Find' onClick={handleFind} />
+                        <PrimaryButton text='Find' onClick={() => handleFind(pickColumn)} />
                         <DefaultButton text='Cancel' onClick={dismissPanel} />
                     </Stack>
                 </Stack>
