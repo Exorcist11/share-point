@@ -9,6 +9,7 @@ export interface IButtonExampleProps {
     disabled?: boolean;
     checked?: boolean;
     idTicket?: string;
+    name: string;
 }
 
 const addIcon: IIconProps = { iconName: 'Add' };
@@ -16,7 +17,7 @@ const addIcon: IIconProps = { iconName: 'Add' };
 const stackStyles: Partial<IStackStyles> = { root: { height: 44 } };
 
 export const ButtonCommandBarExample: React.FunctionComponent<IButtonExampleProps> = props => {
-    const { disabled, checked } = props;
+    const { disabled, checked, name } = props;
     const [isOpen, { setTrue: openPanel, setFalse: dismissPanel }] = useBoolean(false);
 
     return (
@@ -37,7 +38,7 @@ export const ButtonCommandBarExample: React.FunctionComponent<IButtonExampleProp
                 onDismiss={dismissPanel}
                 closeButtonAriaLabel="Close"
             >
-                <FormInsert />
+                <FormInsert name={name} />
             </Panel>
 
         </Stack>

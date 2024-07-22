@@ -8,8 +8,9 @@ import { CommandBarButton, DefaultButton, PrimaryButton } from '@fluentui/react/
 import { FormEdit } from '../FormData/EditForm';
 import { TextField } from '@fluentui/react/lib/TextField';
 import { ButtonCommandBarExample } from '../Button/ButtonBar';
-import { FontIcon } from '@fluentui/react/lib/Icon';
+// import { FontIcon } from '@fluentui/react/lib/Icon';
 import { ContextualMenu, IContextualMenuProps, IContextualMenuItem, ContextualMenuItemType } from '@fluentui/react/lib/ContextualMenu';
+import { Persona, PersonaSize, PersonaPresence } from '@fluentui/react/lib/Persona';
 
 interface IListItem {
     Id: string;
@@ -28,9 +29,9 @@ const stackTokens = { childrenGap: 10 };
 const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
     const [detailList, setDetailList] = React.useState([])
     const [temp, setTemp] = React.useState<IListItem[]>([]);
+    const [group, setGroup] = React.useState([])
     const [isEdit, { setTrue: openEdit, setFalse: dismissEdit }] = useBoolean(false);
     const [idItem, setIdItem] = React.useState<string>('');
-
     const [status, setStatus] = React.useState([])
     const [isOpen, { setTrue: openPanel, setFalse: dismissPanel }] = useBoolean(false);
     const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>([]);
@@ -39,26 +40,6 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
     const [genres, setGenres] = React.useState<string[]>([])
     const [columns, setColumns] = React.useState([])
     const [pickColumn, setPickColumn] = React.useState('')
-
-
-
-    const renderColumn5 = (item: IListItem, index: number, column: IColumn) => {
-        return (
-            <Stack horizontal verticalAlign='center' style={{ textAlign: 'center' }}>
-                <CommandBarButton
-                    iconProps={editIcon}
-                    onClick={() => {
-                        handleUpdate(item.Id);
-                        openEdit();
-                    }}
-                />
-                <CommandBarButton
-                    iconProps={deleteIcon}
-                    onClick={() => handleDelete(item.Id)}
-                />
-            </Stack>
-        );
-    };
 
     const handleUpdate = (id: string) => {
         setIdItem(id);
@@ -76,10 +57,11 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         }
     };
 
-
-
     const fetchTickets = async () => {
         try {
+            const getUser = await pnp.sp.web.siteGroups.getById(92).users.get()
+
+            setGroup(getUser)
             const response = await pnp.sp.web.lists.getByTitle(title).items.get();
             setDetailList(response)
             setTemp(response)
@@ -90,7 +72,7 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
 
     const fetchColumns = async () => {
         try {
-            const response = await pnp.sp.web.lists.getByTitle(title).fields.filter('CanBeDeleted eq true').get();
+            const response = await pnp.sp.web.lists.getByTitle(title).fields.filter('CanBeDeleted eq true').get()
             setColumns(response)
         } catch (error) {
             console.error('Error fetching columns: ', error)
@@ -106,8 +88,6 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
 
         setDetailList(filteredTickets);
     };
-
-
 
     const _onChange = (status: string, isChecked?: boolean) => {
         setSelectedStatuses(prevStatuses => {
@@ -128,6 +108,24 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         });
         setMenuTarget(ev.currentTarget as HTMLElement);
         return;
+    };
+
+    const renderColumn5 = (item: IListItem, index: number, column: IColumn) => {
+        return (
+            <Stack horizontal verticalAlign='center' style={{ textAlign: 'center' }}>
+                <CommandBarButton
+                    iconProps={editIcon}
+                    onClick={() => {
+                        handleUpdate(item.Id);
+                        openEdit();
+                    }}
+                />
+                <CommandBarButton
+                    iconProps={deleteIcon}
+                    onClick={() => handleDelete(item.Id)}
+                />
+            </Stack>
+        );
     };
 
     const _columns: IColumn[] = [
@@ -166,7 +164,7 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         const itemNeed: IColumn = {
             key: `column${i + 2}`,
             name: columns[i].Title,
-            fieldName: columns[i].EntityPropertyName,
+            fieldName: columns[i].TypeDisplayName !== "Person or Group" ? columns[i].EntityPropertyName : columns[i].EntityPropertyName + 'Id',
             minWidth: 100,
             maxWidth: 200,
             isResizable: true,
@@ -182,14 +180,28 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
                     {defaultRender(props)}
                 </div>
             ),
+            onRender: (item: any) => {
+                if (columns[i].TypeDisplayName === "Person or Group") {
+                    const idUser = item[columns[i].EntityPropertyName + 'Id'];
+                    const findUser = group.filter(u => u.Id === idUser);
+                    const imgUrl = `https://nitecovietnam.sharepoint.com/sites/English-Philips/dung-dev/_layouts/15/userphoto.aspx?size=L&accountname=${findUser[0]?.UserPrincipalName}`
+                    return findUser[0]?.Title ? <Persona
+                        text={findUser[0]?.Title}
+                        imageUrl={imgUrl}
+                        showSecondaryText={false}
+                        size={PersonaSize.size24}
+                        presence={PersonaPresence.online}
+                        imageAlt="Annie Lindqvist, status is online"
+                    /> : '';
+                } else {
+                    return item[columns[i].EntityPropertyName];
+                }
+            }
         }
         _columns.push(itemNeed)
     }
 
     const handleFind = async (columnName: string) => {
-        // const uniqueTickets = Array.from(new Set(detailList.map((item) => item[columnName])));
-        // setGenres(uniqueTickets);
-        // setPickColumn(columnName)
         if (selectedStatuses.length === 0) {
             setDetailList(temp);
         } else {
@@ -222,7 +234,6 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         setDetailList(sortedItems);
     }
 
-
     const menuItems = (columnName: string): IContextualMenuItem[] => [
         {
             key: 'atoz',
@@ -245,6 +256,14 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         },
     ];
 
+    const handleRemoveGenres = (item: string) => {
+        const removeGenres = temp.filter(element => element[item] !== item)
+        const filteredStatuses = selectedStatuses.filter(x => x !== item);
+
+        setStatus(filteredStatuses);
+        setDetailList(removeGenres)
+    }
+
     React.useEffect(() => {
         fetchTickets().catch((error) => {
             console.error('Error in fetchTickets useEffect:', error);
@@ -254,14 +273,13 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         });
     }, [title]);
 
-
     return (
         <div style={{ marginTop: '30px' }}>
             <Stack horizontal style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <ButtonCommandBarExample />
+                <ButtonCommandBarExample name={title} />
                 <TextField placeholder="Search by title..." onChange={onChangeText} />
             </Stack>
-            {
+            {/* {
                 status.length > 0 && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} >
                         <p>Status: </p>
@@ -269,13 +287,13 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
                             {selectedStatuses.map((status) => (
                                 <div key={status} style={{ border: '1px solid', borderRadius: '12px', height: 'fit-content', padding: '4px 16px', margin: '0', display: 'flex', alignItems: 'end', gap: '8px' }}>
                                     <div>{status}</div>
-                                    <FontIcon aria-label="CalculatorMultiply" iconName="CalculatorMultiply" style={{ cursor: 'pointer' }} />
+                                    <FontIcon aria-label="CalculatorMultiply" iconName="CalculatorMultiply" style={{ cursor: 'pointer' }} onClick={() => handleRemoveGenres(status)} />
                                 </div>
                             ))}
                         </div>
                     </div>
                 )
-            }
+            } */}
             <DetailsList
                 items={detailList}
                 columns={_columns}
@@ -293,7 +311,7 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
                 onDismiss={dismissEdit}
                 closeButtonAriaLabel="Close"
             >
-                <FormEdit id={idItem} />
+                <FormEdit id={idItem} name={title} />
             </Panel>
 
             <Panel

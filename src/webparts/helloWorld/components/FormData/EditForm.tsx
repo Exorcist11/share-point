@@ -18,14 +18,19 @@ const editIcon: IIconProps = { iconName: 'Edit' };
 
 interface IFormEditProps {
     id: any;
+    name: any;
 }
 
 export interface IGroup {
     Id: number;
     Title: string;
 }
+interface InputProps {
+    name: string;
+    type: string;
+}
 
-export const FormEdit: React.FC<IFormEditProps> = ({ id }) => {
+export const FormEdit: React.FC<IFormEditProps> = ({ id, name }) => {
     const [ticket, setTicket] = React.useState({
         title: '',
         description: '',
@@ -41,6 +46,9 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id }) => {
         record_2: '',
         record_3: '',
     })
+    const [columnName, setColumnName] = React.useState([]);
+    const [typeOfColumn, setTypeOfColumn] = React.useState([])
+
     const dropdownStyles: Partial<IDropdownStyles> = {
         dropdown: { width: 300 },
     };
@@ -52,11 +60,47 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id }) => {
             text: item.Title
         }))
     ]
+    const options: IDropdownOption[] = [
+
+        { key: 'apple', text: 'Apple' },
+        { key: 'banana', text: 'Banana' },
+        { key: 'orange', text: 'Orange', disabled: true },
+        { key: 'grape', text: 'Grape' },
+        { key: 'broccoli', text: 'Broccoli' },
+        { key: 'carrot', text: 'Carrot' },
+        { key: 'lettuce', text: 'Lettuce' },
+    ];
+
+    const createInputElement = (name: string, type: string) => {
+        switch (type) {
+            case "Multiple lines of text":
+                return <TextField label={name} placeholder={name} multiline />;
+            case "Single line of text":
+                return <TextField label={name} placeholder={name} />;
+            case 'Number':
+                return <input type="number" name={name} placeholder={name} />;
+            case 'Choice':
+                return (
+                    <Dropdown
+                        placeholder="Select an option"
+                        label="Basic uncontrolled example"
+                        options={options}
+                        styles={dropdownStyles}
+                    />
+                );
+            default:
+                return <TextField label={name} />;
+        }
+    };
+    const InputElement: React.FC<InputProps> = ({ name, type }) => {
+        return createInputElement(name, type);
+    };
     const fetchTickets = async () => {
         try {
-            const getUser = await pnp.sp.web.lists.getByTitle('Information').items.getById(id).get();
+            const getUser = await pnp.sp.web.lists.getByTitle(name).items.getById(id).get();
+            const response = await pnp.sp.web.lists.getByTitle(name).fields.filter('CanBeDeleted eq true').get();
+            setColumnName(response)
             const logUser = await pnp.sp.web.currentUser.get();
-            // console.log(getUser)
             setTicket({
                 title: getUser.Title,
                 description: getUser.Description,
@@ -155,7 +199,7 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id }) => {
 
             const updatedItem = await pnp.sp.web.lists.getByTitle('Information').items.getById(id).get();
 
-            if (updatedItem.Record_1 && updatedItem.Record_2 && updatedItem.Record_3) {
+            if (updatedItem.Record_1 && updatedItem.Record_2 && updatedItem.Record_3 && updatedItem.Status === 'On Going') {
                 await pnp.sp.web.lists.getByTitle('Information').items.getById(id).update({
                     Status: status
                 });
@@ -172,7 +216,6 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id }) => {
         if (!ticket.record_3 && ticket.currentID === ticket.assigneeID_3 && ticket.status === 'On Going') return true;
         return false;
     }
-
 
     const fetchGroup = async () => {
         try {
@@ -197,6 +240,7 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id }) => {
     }, []);
 
     return (
+
         <Stack tokens={stackTokens}>
             <Stack horizontal tokens={stackTokens} style={{ display: 'flex', gap: '10px' }}>
                 <DefaultButton
@@ -218,7 +262,16 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id }) => {
                 // checked={checked}
                 />
             </Stack>
-            <h2>Actions</h2>
+
+            {columnName.map((item, index) => (
+                <div key={index}>
+                    <label>
+                        <InputElement name={item.Title} type={item.TypeDisplayName} />
+                    </label>
+                    <br />
+                </div>
+            ))}
+            {/* <h2>Actions</h2>
             <Stack horizontal tokens={stackTokens} style={{ display: 'flex', gap: '8px' }}>
                 {
                     (ticket.status === 'Draft') &&
@@ -333,7 +386,7 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id }) => {
                 styles={dropdownStyles}
                 defaultSelectedKey={ticket.assigneeID}
                 disabled={true}
-            />
+            /> */}
 
         </Stack>
     )
