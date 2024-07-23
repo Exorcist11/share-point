@@ -32,6 +32,7 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id, name }) => {
     const [group, setGroup] = React.useState<IGroup[]>([]);
     const [columnName, setColumnName] = React.useState([]);
     const [formValues, setFormValues] = React.useState<{ [key: string]: string | number }>({});
+    const [errors, setErrors] = React.useState<{ [key: string]: string }>({});
 
     const dropdownStyles: Partial<IDropdownStyles> = {
         dropdown: { width: 300 },
@@ -43,6 +44,102 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id, name }) => {
             text: item.Title
         }))
     ]
+
+    const createInputElement = (name: string, epName: string, type: string, value: string | number) => {
+        switch (type) {
+            case "Multiple lines of text":
+                return <TextField
+                    label={name}
+                    placeholder={name}
+                    multiline
+                    value={String(formValues[epName] || '')}
+                    styles={textFieldStyles}
+                    onChange={handleTextFieldChange}
+                    name={epName}
+                    required={requiredCol.includes(name)}
+                    errorMessage={errors[name]}
+                />;
+
+            case "Single line of text":
+                return <TextField
+                    label={name}
+                    placeholder={name}
+                    value={String(formValues[epName] || '')}
+                    styles={textFieldStyles}
+                    onChange={handleTextFieldChange}
+                    name={epName}
+                    required={requiredCol.includes(name)}
+                    errorMessage={errors[name]}
+                />;
+
+            case 'Number':
+                return <TextField
+                    type="number"
+                    label={name}
+                    name={name}
+                    placeholder={name}
+                    styles={textFieldStyles}
+                    value={String(formValues[name] || '')}
+                    onChange={handleTextFieldChange}
+                    required={requiredCol.includes(name)}
+                    errorMessage={errors[name]}
+                />;
+
+            case 'Choice':
+                return (
+                    <Dropdown
+                        placeholder="Select an option"
+                        label={name}
+                        options={dropdownOptions[name] || []}
+                        styles={dropdownStyles}
+                        onChange={(option, index) => handleDropdownChange(option, index, name)}
+                        data-name={name}
+                        selectedKey={formValues[name]}
+                        errorMessage={errors[name]}
+                    />
+                );
+
+            case 'Person or Group':
+                return (
+                    <Dropdown
+                        placeholder="Select an option"
+                        label={name}
+                        options={optionsManager}
+                        styles={dropdownStyles}
+                        onChange={(option, index) => handleDropdownChange(option, index, name)}
+                        data-name={name}
+                        selectedKey={formValues[name + 'Id'] || undefined}
+                        errorMessage={errors[name]}
+                    />
+                );
+
+            default:
+                return <TextField
+                    label={name}
+                    value={String(formValues[epName] || '')}
+                    onChange={handleTextFieldChange}
+                    name={epName}
+                    required={requiredCol.includes(name)}
+                    errorMessage={errors[name]}
+                />;
+        }
+    };
+
+    const validateForm = (): boolean => {
+        const newErrors: { [key: string]: string } = {};
+
+        if (!formValues['Title']) {
+            newErrors['Title'] = `Please enter Title`
+        }
+
+        requiredCol.forEach(code => {
+            if (!formValues[code]) {
+                newErrors[code] = `Please enter ${code}`
+            }
+        })
+        setErrors(newErrors)
+        return Object.keys(newErrors).length === 0;
+    }
 
     const handleDropdownChange = (event?: React.FormEvent<HTMLDivElement>, option?: IDropdownOption, dropdownName?: string) => {
         setFormValues(prevValues => ({
@@ -59,100 +156,11 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id, name }) => {
         }));
     };
 
-    const fetchChoices = async (column: string) => {
-        try {
-            const fields = await pnp.sp.web.lists.getByTitle(name).fields.getByInternalNameOrTitle(column).get();
-            const choices = fields.Choices;
-            const dropdownOptions = choices.map((choice: string) => ({
-                key: choice,
-                text: choice
-            }))
-            setDropdownOptions(prevState => ({
-                ...prevState,
-                [column]: dropdownOptions
-            }));
-
-        } catch (error) {
-            console.error(`Error getting choices for field "Status":`, error);
-        }
-    }
-
-    const createInputElement = (name: string, epName: string, type: string, value: string | number) => {
-        switch (type) {
-            case "Multiple lines of text":
-                return <TextField
-                    label={name}
-                    placeholder={name}
-                    multiline
-                    value={String(formValues[epName] || '')}
-                    styles={textFieldStyles}
-                    onChange={handleTextFieldChange}
-                    name={epName}
-                    required={requiredCol.includes(name)}
-                />;
-
-            case "Single line of text":
-                return <TextField
-                    label={name}
-                    placeholder={name}
-                    value={String(formValues[epName] || '')}
-                    styles={textFieldStyles}
-                    onChange={handleTextFieldChange}
-                    name={epName}
-                    required={requiredCol.includes(name)}
-                />;
-
-            case 'Number':
-                return <input
-                    type="number"
-                    name={epName}
-                    placeholder={name}
-                    value={String(formValues[epName] || '')}
-                    onChange={handleTextFieldChange}
-                />;
-
-            case 'Choice':
-                return (
-                    <Dropdown
-                        placeholder="Select an option"
-                        label={name}
-                        options={dropdownOptions[name] || []}
-                        styles={dropdownStyles}
-                        onChange={(option, index) => handleDropdownChange(option, index, name)}
-                        data-name={name}
-                        selectedKey={formValues[name]}
-                    />
-                );
-
-            case 'Person or Group':
-                return (
-                    <Dropdown
-                        placeholder="Select an option"
-                        label={name}
-                        options={optionsManager}
-                        styles={dropdownStyles}
-                        onChange={(option, index) => handleDropdownChange(option, index, name)}
-                        data-name={name}
-                        selectedKey={formValues[name + 'Id'] || undefined}
-                    />
-                );
-
-            default:
-                return <TextField
-                    label={name}
-                    value={String(formValues[epName] || '')}
-                    onChange={handleTextFieldChange}
-                    name={epName}
-                    required={requiredCol.includes(name)}
-                />;
-        }
-    };
-
     const _handleUpdate = async () => {
         try {
-            if (id) {
+            if (id && validateForm()) {
                 await pnp.sp.web.lists.getByTitle(name).items.getById(id).update({ ...formValues });
-                window.location.reload()
+                alert('Success')
             }
 
         } catch (error) {
@@ -218,6 +226,24 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id, name }) => {
     //     if (!ticket.record_3 && ticket.currentID === ticket.assigneeID_3 && ticket.status === 'On Going') return true;
     //     return false;
     // }
+
+    const fetchChoices = async (column: string) => {
+        try {
+            const fields = await pnp.sp.web.lists.getByTitle(name).fields.getByInternalNameOrTitle(column).get();
+            const choices = fields.Choices;
+            const dropdownOptions = choices.map((choice: string) => ({
+                key: choice,
+                text: choice
+            }))
+            setDropdownOptions(prevState => ({
+                ...prevState,
+                [column]: dropdownOptions
+            }));
+
+        } catch (error) {
+            console.error(`Error getting choices for field "Status":`, error);
+        }
+    }
 
     const fetchTickets = async () => {
         try {
@@ -294,7 +320,7 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id, name }) => {
                 />
             </Stack>
 
-            <TextField label={'Title'} placeholder={'Title'} name="Title" value={String(formValues['Title'])} styles={textFieldStyles} onChange={handleTextFieldChange} disabled />
+            <TextField label={'Title'} placeholder={'Title'} name="Title" value={String(formValues['Title'])} styles={textFieldStyles} onChange={handleTextFieldChange} disabled required />
 
             {columnName.map((item, index) => (
                 <div key={index}>

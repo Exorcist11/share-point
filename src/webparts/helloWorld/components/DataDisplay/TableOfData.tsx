@@ -11,6 +11,7 @@ import { ButtonCommandBarExample } from '../Button/ButtonBar';
 // import { FontIcon } from '@fluentui/react/lib/Icon';
 import { ContextualMenu, IContextualMenuProps, IContextualMenuItem, ContextualMenuItemType } from '@fluentui/react/lib/ContextualMenu';
 import { Persona, PersonaSize, PersonaPresence } from '@fluentui/react/lib/Persona';
+import { FormInsert } from '../FormData/FormData';
 
 interface IListItem {
     Id: string;
@@ -22,6 +23,7 @@ interface TableDataFLProps {
     title: string;
 }
 
+const addIcon: IIconProps = { iconName: 'Add' };
 const deleteIcon: IIconProps = { iconName: 'Delete' };
 const editIcon: IIconProps = { iconName: 'Edit' };
 const stackTokens = { childrenGap: 10 };
@@ -30,10 +32,10 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
     const [detailList, setDetailList] = React.useState([])
     const [temp, setTemp] = React.useState<IListItem[]>([]);
     const [group, setGroup] = React.useState([])
-    const [isEdit, { setTrue: openEdit, setFalse: dismissEdit }] = useBoolean(false);
+
     const [idItem, setIdItem] = React.useState<string>('');
     const [status, setStatus] = React.useState([])
-    const [isOpen, { setTrue: openPanel, setFalse: dismissPanel }] = useBoolean(false);
+
     const [selectedStatuses, setSelectedStatuses] = React.useState<string[]>([]);
     const [menuTarget, setMenuTarget] = React.useState<HTMLElement | undefined>(undefined);
     const [menuProps, setMenuProps] = React.useState<IContextualMenuProps | undefined>(undefined);
@@ -41,9 +43,23 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
     const [columns, setColumns] = React.useState([])
     const [pickColumn, setPickColumn] = React.useState('')
 
+    const [isOpen, { setTrue: openPanel, setFalse: dismissPanel }] = useBoolean(false);
+    const [isAdd, { setTrue: openAdd, setFalse: dismissAdd }] = useBoolean(false);
+    const [isEdit, { setTrue: openEdit, setFalse: dismissEdit }] = useBoolean(false);
+
     const handleUpdate = (id: string) => {
         setIdItem(id);
     };
+
+    const handleDismissAdd = async () => {
+        dismissAdd();
+        fetchTickets();
+    }
+
+    const handleDismissEdit = async () => {
+        dismissEdit();
+        fetchTickets();
+    }
 
     const handleDelete = async (id: string) => {
         try {
@@ -280,7 +296,24 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
     return (
         <div style={{ marginTop: '30px' }}>
             <Stack horizontal style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <ButtonCommandBarExample name={title} />
+                <DefaultButton
+                    iconProps={addIcon}
+                    text="New item"
+                    // split={true}
+                    // disabled={disabled}
+                    // checked={checked}
+                    onClick={openAdd}
+                />
+
+                <Panel
+                    headerText="New item"
+                    isOpen={isAdd}
+                    type={PanelType.medium}
+                    onDismiss={handleDismissAdd}
+                    closeButtonAriaLabel="Close"
+                >
+                    <FormInsert name={title} />
+                </Panel>
                 <TextField placeholder="Search by title..." onChange={onChangeText} />
             </Stack>
             {/* {
@@ -312,7 +345,7 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
                 headerText="Edit Item"
                 isOpen={isEdit}
                 type={PanelType.medium}
-                onDismiss={dismissEdit}
+                onDismiss={handleDismissEdit}
                 closeButtonAriaLabel="Close"
             >
                 <FormEdit id={idItem} name={title} />
