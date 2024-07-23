@@ -60,7 +60,6 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
     const fetchTickets = async () => {
         try {
             const getUser = await pnp.sp.web.siteGroups.getById(92).users.get()
-
             setGroup(getUser)
             const response = await pnp.sp.web.lists.getByTitle(title).items.get();
             setDetailList(response)
@@ -185,14 +184,19 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
                     const idUser = item[columns[i].EntityPropertyName + 'Id'];
                     const findUser = group.filter(u => u.Id === idUser);
                     const imgUrl = `https://nitecovietnam.sharepoint.com/sites/English-Philips/dung-dev/_layouts/15/userphoto.aspx?size=L&accountname=${findUser[0]?.UserPrincipalName}`
+
                     return findUser[0]?.Title ? <Persona
                         text={findUser[0]?.Title}
                         imageUrl={imgUrl}
                         showSecondaryText={false}
                         size={PersonaSize.size24}
-                        presence={PersonaPresence.online}
-                        imageAlt="Annie Lindqvist, status is online"
+                        // presence={PersonaPresence.online}
+                        imageAlt={findUser[0]?.UserPrincipalName}
                     /> : '';
+                    // }
+                    // else if (columns[i].TypeDisplayName === "Date and Time") {
+                    //     const date = new Date(item[columns[i].EntityPropertyName]);
+                    //     return columns[i].TypeDisplayName ? date.toLocaleDateString('vi-VN') : columns[i].TypeDisplayName;
                 } else {
                     return item[columns[i].EntityPropertyName];
                 }

@@ -21,27 +21,12 @@ export interface IFormData {
     name: string;
 }
 
-interface InputProps {
-    name: string;
-    type: string;
-    value: string | number;
-    onChange: (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement | HTMLDivElement>, newValue?: string) => void;
-}
-
 export const FormInsert: React.FC<IFormData> = ({ name }) => {
-    // const [ticket, setTicket] = React.useState({
-    //     title: '',
-    //     description: '',
-    //     category: '',
-    //     status: 'Draft',
-    //     currentID: '',
-    //     AssigneeId: '',
-    //     AssigneeId_2: '',
-    //     AssigneeId_3: '',
-    //     ManagerId: ''
-    // });
     const [group, setGroup] = React.useState<IGroup[]>([]);
     const [columnName, setColumnName] = React.useState<any[]>([]);
+    const [formValues, setFormValues] = React.useState<{ [key: string]: string | number }>({});
+    const [dropdownOptions, setDropdownOptions] = React.useState<{ [key: string]: IDropdownOption[] }>({});
+    const [requiredCol, setRequiredCol] = React.useState([]);
 
     const fetchGroup = async () => {
         try {
@@ -56,26 +41,47 @@ export const FormInsert: React.FC<IFormData> = ({ name }) => {
         }
     };
 
-    // const fetchTickets = async () => {
-    //     try {
-    //         const logUser = await pnp.sp.web.currentUser.get();
-    //         setTicket({ ...ticket, currentID: logUser.Id || '' });
-    //     } catch (error) {
-    //         console.error('Error fetching tickets:', error);
-    //     }
-    // };
 
-    const [v, setV] = React.useState([])
-
-    const handleDropdownChange = (event: React.FormEvent<HTMLDivElement>, option?: IDropdownOption, index?: number) => {
-        const name = event.currentTarget.getAttribute('data-name') || '';
-        if (name in v) {
-            setV(prevTicket => ({
-                ...prevTicket,
-                [name]: option?.key as string
+    const fetchChoices = async (column: string) => {
+        try {
+            const fields = await pnp.sp.web.lists.getByTitle(name).fields.getByInternalNameOrTitle(column).get();
+            const choices = fields.Choices;
+            const dropdownOptions = choices.map((choice: string) => ({
+                key: choice,
+                text: choice
+            }))
+            setDropdownOptions(prevState => ({
+                ...prevState,
+                [column]: dropdownOptions
             }));
+
+        } catch (error) {
+            console.error(`Error getting choices for field "Status":`, error);
+        }
+    }
+
+    const fetchColumns = async () => {
+        try {
+            const response = await pnp.sp.web.lists.getByTitle(name).fields.filter('CanBeDeleted eq true').get();
+            setColumnName(response);
+
+            response.forEach(async (item: any) => {
+                if (item.FieldTypeKind === 6) {
+                    await fetchChoices(item.Title);
+                }
+            });
+
+        } catch (error) {
+            console.error('Error fetching columns: ', error);
         }
     };
+
+    const handleDropdownChange = (event?: React.FormEvent<HTMLDivElement>, option?: IDropdownOption, dropdownName?: string) => {
+        setFormValues(prevValues => ({
+            ...prevValues,
+            [dropdownName]: option ? option.key as string : ''
+        }));
+    }
 
     const dropdownStyles: Partial<IDropdownStyles> = {
         dropdown: { width: 300 },
@@ -88,96 +94,128 @@ export const FormInsert: React.FC<IFormData> = ({ name }) => {
         }))
     ];
 
-    const _handleSubmit = async () => {
-        try {
-            // await pnp.sp.web.lists.getByTitle('Information').items.add({
-            //     Title: ticket.title,
-            //     Description: ticket.description,
-            //     CategoryV2: ticket.category,
-            //     Status: ticket.status,
-            //     RequestorId: ticket.currentID,
-            //     AssigneeId: ticket.AssigneeId,
-            //     Assignee_2Id: ticket.AssigneeId_2,
-            //     Assignee_3Id: ticket.AssigneeId_3,
-            //     ManagerId: ticket.ManagerId,
-            // });
-            window.location.reload();
-        } catch (error) {
-            console.error('Đã xảy ra lỗi khi gửi dữ liệu:', error);
-        }
+    const handleTextFieldChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+        const { name } = event.currentTarget;
+        setFormValues(prevValues => ({
+            ...prevValues,
+            [name]: newValue || '',
+        }));
     };
 
-    const options: IDropdownOption[] = [
-        { key: 'apple', text: 'Apple' },
-        { key: 'banana', text: 'Banana' },
-        { key: 'orange', text: 'Orange', disabled: true },
-        { key: 'grape', text: 'Grape' },
-        { key: 'broccoli', text: 'Broccoli' },
-        { key: 'carrot', text: 'Carrot' },
-        { key: 'lettuce', text: 'Lettuce' },
-    ];
-
     const createInputElement = (name: string, type: string, value: string | number) => {
-        const stringValue = String(value);
-
         switch (type) {
             case "Multiple lines of text":
-                return <TextField label={name} placeholder={name} multiline name={name} value={stringValue} styles={textFieldStyles} />;
+                return <TextField
+                    label={name}
+                    placeholder={name}
+                    multiline
+                    value={String(formValues[name] || '')}
+                    styles={textFieldStyles}
+                    onChange={handleTextFieldChange}
+                    name={name}
+                    required={requiredCol.includes(name)}
+                />;
 
             case "Single line of text":
-                return <TextField label={name} placeholder={name} name={name} value={stringValue} styles={textFieldStyles} />;
+                return <TextField
+                    label={name}
+                    placeholder={name}
+                    value={String(formValues[name] || '')}
+                    styles={textFieldStyles}
+                    onChange={handleTextFieldChange}
+                    name={name}
+                    required={requiredCol.includes(name)}
+                />;
 
             case 'Number':
-                return <input type="number" name={name} placeholder={name} value={value} />;
+                return <input
+                    type="number"
+                    name={name}
+                    placeholder={name}
+                    value={String(formValues[name] || '')}
+                    onChange={handleTextFieldChange}
+                />;
 
             case 'Choice':
                 return (
                     <Dropdown
                         placeholder="Select an option"
                         label={name}
-                        options={options}
+                        options={dropdownOptions[name] || []}
                         styles={dropdownStyles}
-                        onChange={handleDropdownChange}
-                        data-name={name} // Use data attribute to pass field name
+                        onChange={(option, index) => handleDropdownChange(option, index, name)}
+                        data-name={name}
+                        selectedKey={formValues[name] || undefined}
+                    />
+
+                );
+
+            case 'Person or Group':
+                return (
+                    <Dropdown
+                        placeholder="Select an option"
+                        label={name}
+                        options={optionsManager}
+                        styles={dropdownStyles}
+                        onChange={(option, index) => handleDropdownChange(option, index, name)}
+                        data-name={name}
+                        selectedKey={formValues[name] || undefined}
                     />
                 );
 
             default:
-                return <TextField label={name} name={name} value={stringValue} />;
+                return <TextField
+                    label={name}
+                    value={String(formValues[name] || '')}
+                    onChange={handleTextFieldChange}
+                    name={name}
+                    required={requiredCol.includes(name)}
+                />;
         }
     };
 
-    const fetchColumns = async () => {
+    const _handleSubmit = async () => {
         try {
-            const response = await pnp.sp.web.lists.getByTitle(name).fields.filter('CanBeDeleted eq true').get();
-            setColumnName(response);
+            const dataToSend = { ...formValues };
+            await pnp.sp.web.lists.getByTitle(name).items.add(dataToSend);
         } catch (error) {
-            console.error('Error fetching columns: ', error);
+            console.error('Đã xảy ra lỗi khi gửi dữ liệu:', error);
         }
     };
-
+    const fetchRequireColumns = async () => {
+        try {
+            const fields = await pnp.sp.web.lists.getByTitle(name).fields.filter('Required eq true').get();
+            const fieldTitle = fields.map((field: any) => field.Title)
+            setRequiredCol(fieldTitle)
+        } catch (error) {
+            console.error(error)
+        }
+    }
     React.useEffect(() => {
-        // fetchTickets().catch((error) => {
-        //     console.error('Error in fetchTickets useEffect:', error);
-        // });
         fetchGroup().catch(e => {
             console.error('Error in fetchGroup: ' + e);
         });
         fetchColumns().catch(e => {
             console.error('Error in fetchColumns: ' + e);
         });
+        fetchRequireColumns().catch((error) => {
+            console.error('Error in fetchRequireColumns: ', error)
+        });
     }, []);
 
     return (
         <Stack tokens={stackTokens}>
+            <TextField label={'Title'} placeholder={'Title'} name="Title" styles={textFieldStyles} onChange={handleTextFieldChange} required />
+
             {columnName.map((item, index) => (
                 <div key={index}>
                     <label>
-                        {createInputElement(item.Title, item.TypeDisplayName, v[item.Title] || '')}
+                        {createInputElement(item.Title, item.TypeDisplayName, formValues[item.Title] || '')}
                     </label>
                     <br />
                 </div>
             ))}
+
             <DefaultButton
                 text="Create"
                 iconProps={addIcon}
