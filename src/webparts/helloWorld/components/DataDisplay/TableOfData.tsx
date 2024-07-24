@@ -61,6 +61,36 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         fetchTickets();
     }
 
+    const handleFind = async (columnName: string) => {
+        if (selectedStatuses.length === 0) {
+            setDetailList(temp);
+        } else {
+            const filteredItems = temp.filter(item => selectedStatuses.includes(item[columnName]));
+            setDetailList(filteredItems);
+            setStatus(genres)
+        }
+        dismissPanel();
+    };
+
+    const handleColumnClick = (columnName: string, ev: React.MouseEvent<HTMLElement>) => {
+        setMenuProps({
+            items: menuItems(columnName),
+            target: ev.currentTarget as HTMLElement,
+            directionalHint: 12,
+            onDismiss: () => setMenuProps(undefined),
+        });
+        setMenuTarget(ev.currentTarget as HTMLElement);
+        return;
+    };
+
+    // const handleRemoveGenres = (item: string) => {
+    //     const removeGenres = temp.filter(element => element[item] !== item)
+    //     const filteredStatuses = selectedStatuses.filter(x => x !== item);
+
+    //     setStatus(filteredStatuses);
+    //     setDetailList(removeGenres)
+    // }
+
     const handleDelete = async (id: string) => {
         try {
             if (id) {
@@ -73,26 +103,12 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         }
     };
 
-    const fetchTickets = async () => {
-        try {
-            const getUser = await pnp.sp.web.siteGroups.getById(92).users.get()
-            setGroup(getUser)
-            const response = await pnp.sp.web.lists.getByTitle(title).items.get();
-            setDetailList(response)
-            setTemp(response)
-        } catch (error) {
-            console.error('Error fetching tickets:', error);
-        }
+    const handleFilterAndOpenPanel = async (columnName: any) => {
+        const uniqueTickets = Array.from(new Set(detailList.map((item) => item[columnName])));
+        setGenres(uniqueTickets);
+        setPickColumn(columnName)
+        openPanel();
     };
-
-    const fetchColumns = async () => {
-        try {
-            const response = await pnp.sp.web.lists.getByTitle(title).fields.filter('CanBeDeleted eq true').get()
-            setColumns(response)
-        } catch (error) {
-            console.error('Error fetching columns: ', error)
-        }
-    }
 
     const onChangeText = (ev: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const filterText = ev.target.value.toLowerCase();
@@ -112,17 +128,6 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
                 return prevStatuses.filter(s => s !== status);
             }
         });
-    };
-
-    const handleColumnClick = (columnName: string, ev: React.MouseEvent<HTMLElement>) => {
-        setMenuProps({
-            items: menuItems(columnName),
-            target: ev.currentTarget as HTMLElement,
-            directionalHint: 12,
-            onDismiss: () => setMenuProps(undefined),
-        });
-        setMenuTarget(ev.currentTarget as HTMLElement);
-        return;
     };
 
     const renderColumn5 = (item: IListItem, index: number, column: IColumn) => {
@@ -221,25 +226,6 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         _columns.push(itemNeed)
     }
 
-    const handleFind = async (columnName: string) => {
-        if (selectedStatuses.length === 0) {
-            setDetailList(temp);
-        } else {
-            const filteredItems = temp.filter(item => selectedStatuses.includes(item[columnName]));
-            setDetailList(filteredItems);
-            setStatus(genres)
-        }
-        dismissPanel();
-    };
-
-    const handleFilterAndOpenPanel = async (columnName: any) => {
-        const uniqueTickets = Array.from(new Set(detailList.map((item) => item[columnName])));
-        setGenres(uniqueTickets);
-        setPickColumn(columnName)
-        openPanel();
-
-    };
-
     const handleSort = (columnName: string, isSortedDescending: boolean) => {
         const sortedItems = [...detailList].sort((a, b) => {
             if (a[columnName] < b[columnName]) {
@@ -276,12 +262,25 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         },
     ];
 
-    const handleRemoveGenres = (item: string) => {
-        const removeGenres = temp.filter(element => element[item] !== item)
-        const filteredStatuses = selectedStatuses.filter(x => x !== item);
+    const fetchTickets = async () => {
+        try {
+            const getUser = await pnp.sp.web.siteGroups.getById(92).users.get()
+            setGroup(getUser)
+            const response = await pnp.sp.web.lists.getByTitle(title).items.get();
+            setDetailList(response)
+            setTemp(response)
+        } catch (error) {
+            console.error('Error fetching tickets:', error);
+        }
+    };
 
-        setStatus(filteredStatuses);
-        setDetailList(removeGenres)
+    const fetchColumns = async () => {
+        try {
+            const response = await pnp.sp.web.lists.getByTitle(title).fields.filter('CanBeDeleted eq true').get()
+            setColumns(response)
+        } catch (error) {
+            console.error('Error fetching columns: ', error)
+        }
     }
 
     React.useEffect(() => {
@@ -314,6 +313,7 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
                 >
                     <FormInsert name={title} />
                 </Panel>
+
                 <TextField placeholder="Search by title..." onChange={onChangeText} />
             </Stack>
             {/* {

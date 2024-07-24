@@ -180,53 +180,6 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id, name }) => {
         }
     }
 
-    // const handleByAssignee = async (status: string) => {
-    //     try {
-    //         if (ticket.currentID === ticket.assigneeID && !ticket.record_1) {
-    //             await pnp.sp.web.lists.getByTitle('Information').items.getById(id).update({
-    //                 Record_1: new Date().toISOString()
-    //             });
-    //         } else if (ticket.currentID === ticket.assigneeID_2 && !ticket.record_2) {
-    //             await pnp.sp.web.lists.getByTitle('Information').items.getById(id).update({
-    //                 Record_2: new Date().toISOString()
-    //             });
-    //         } else if (ticket.currentID === ticket.assigneeID_3 && !ticket.record_3) {
-    //             await pnp.sp.web.lists.getByTitle('Information').items.getById(id).update({
-    //                 Record_3: new Date().toISOString()
-    //             });
-    //         } else if (ticket.currentID === ticket.managerID) {
-    //             await pnp.sp.web.lists.getByTitle('Information').items.getById(id).update({
-    //                 Status: status
-    //             });
-    //         } else if (ticket.currentID === ticket.requesterID) {
-    //             await pnp.sp.web.lists.getByTitle('Information').items.getById(id).update({
-    //                 Status: status
-    //             });
-    //         } else {
-    //             alert('You do not have permission.');
-    //             return;
-    //         }
-
-    //         const updatedItem = await pnp.sp.web.lists.getByTitle('Information').items.getById(id).get();
-
-    //         if (updatedItem.Record_1 && updatedItem.Record_2 && updatedItem.Record_3 && updatedItem.Status === 'On Going') {
-    //             await pnp.sp.web.lists.getByTitle('Information').items.getById(id).update({
-    //                 Status: status
-    //             });
-    //             console.log('Update successful! Status:', status);
-    //         }
-    //     } catch (error) {
-    //         console.error('Error updating status:', error);
-    //     }
-    // }
-
-    // const isVisible = () => {
-    //     if (!ticket.record_1 && ticket.currentID === ticket.assigneeID && ticket.status === 'On Going') return true;
-    //     if (!ticket.record_2 && ticket.currentID === ticket.assigneeID_2 && ticket.status === 'On Going') return true;
-    //     if (!ticket.record_3 && ticket.currentID === ticket.assigneeID_3 && ticket.status === 'On Going') return true;
-    //     return false;
-    // }
-
     const fetchChoices = async (column: string) => {
         try {
             const fields = await pnp.sp.web.lists.getByTitle(name).fields.getByInternalNameOrTitle(column).get();
@@ -306,8 +259,6 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id, name }) => {
                     style={{ width: 'fit-content' }}
                     onClick={_handleUpdate}
                     allowDisabledFocus
-                // disabled={true}
-                // checked={checked}
                 />
                 <DefaultButton
                     text="Delete"
@@ -315,8 +266,6 @@ export const FormEdit: React.FC<IFormEditProps> = ({ id, name }) => {
                     style={{ width: 'fit-content' }}
                     onClick={_handleDelete}
                     allowDisabledFocus
-                // disabled={true}
-                // checked={checked}
                 />
             </Stack>
 

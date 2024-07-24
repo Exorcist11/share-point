@@ -3,7 +3,7 @@ import { IHelloWorldProps } from './IHelloWorldProps';
 import './HelloWorld.module.scss';
 import TableDataFL from './DataDisplay/TableOfData';
 import { sp } from 'sp-pnp-js';
-import { Dropdown, DropdownMenuItemType, IDropdownStyles, IDropdownOption } from '@fluentui/react/lib/Dropdown';
+import { Dropdown, IDropdownOption } from '@fluentui/react/lib/Dropdown';
 
 const HelloWorld: React.FC<IHelloWorldProps> = (props: any) => {
   const [lists, setLists] = React.useState([]);

@@ -35,7 +35,7 @@ export const FormInsert: React.FC<IFormData> = ({ name }) => {
             ...prevValues,
             [dropdownName]: option ? option.key as string : ''
         }));
-    }
+    };
 
     const handleTextFieldChange = (event: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
         const { name } = event.currentTarget;
@@ -46,14 +46,14 @@ export const FormInsert: React.FC<IFormData> = ({ name }) => {
     };
 
     const _handleSubmit = async () => {
-        if (validateForm()) {
-            try {
+        try {
+            if (await validateForm() === true) {
                 const dataToSend = { ...formValues };
                 await pnp.sp.web.lists.getByTitle(name).items.add(dataToSend);
                 alert(`${name} added successfully!`)
-            } catch (error) {
-                console.error('Đã xảy ra lỗi khi gửi dữ liệu:', error);
             }
+        } catch (error) {
+            console.error('Đã xảy ra lỗi khi gửi dữ liệu:', error);
         }
     };
 
@@ -156,9 +156,14 @@ export const FormInsert: React.FC<IFormData> = ({ name }) => {
             newErrors['Title'] = `Please enter Title`
         }
 
+        requiredCol.forEach(code => {
+            if (!formValues[code]) {
+                newErrors[code] = `Please enter ${code}`
+            }
+        })
+
         for (const code of uniqueCol) {
             if (formValues[code]) {
-
                 const items = await pnp.sp.web.lists.getByTitle(name).items.filter(`${code} eq '${formValues[code]}'`).get();
 
                 if (items.length > 0) {
@@ -166,12 +171,6 @@ export const FormInsert: React.FC<IFormData> = ({ name }) => {
                 }
             }
         }
-
-        requiredCol.forEach(code => {
-            if (!formValues[code]) {
-                newErrors[code] = `Please enter ${code}`
-            }
-        })
         setErrors(newErrors)
         return Object.keys(newErrors).length === 0;
     }
@@ -217,7 +216,6 @@ export const FormInsert: React.FC<IFormData> = ({ name }) => {
                     await fetchChoices(item.Title);
                 }
             });
-
         } catch (error) {
             console.error('Error fetching columns: ', error);
         }
@@ -275,8 +273,6 @@ export const FormInsert: React.FC<IFormData> = ({ name }) => {
                     <br />
                 </div>
             ))}
-
-
         </Stack>
     );
 };
