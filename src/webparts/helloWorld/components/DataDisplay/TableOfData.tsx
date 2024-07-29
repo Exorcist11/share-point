@@ -13,6 +13,7 @@ import { ContextualMenu, IContextualMenuProps, IContextualMenuItem, ContextualMe
 import { Persona, PersonaSize, PersonaPresence } from '@fluentui/react/lib/Persona';
 import { FormInsert } from '../FormData/FormData';
 
+
 interface IListItem {
     Id: string;
     title: string;
@@ -110,6 +111,20 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         openPanel();
     };
 
+    const handleSort = (columnName: string, isSortedDescending: boolean) => {
+        const sortedItems = [...detailList].sort((a, b) => {
+            if (a[columnName] < b[columnName]) {
+                return isSortedDescending ? 1 : -1;
+            }
+            if (a[columnName] > b[columnName]) {
+                return isSortedDescending ? -1 : 1;
+            }
+            return 0;
+        });
+
+        setDetailList(sortedItems);
+    }
+
     const onChangeText = (ev: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const filterText = ev.target.value.toLowerCase();
 
@@ -180,11 +195,25 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         }
     ];
 
+    const checkFieldName = (colName: string, entityName: string) => {
+        switch (colName) {
+            case "Person or Group":
+                return entityName + 'Id';
+            case "Lookup":
+                console.log(entityName)
+                return entityName;
+            default:
+                return entityName
+        }
+    }
+
+    // columns[i].TypeDisplayName !== "Person or Group" ? columns[i].EntityPropertyName : columns[i].EntityPropertyName + 'Id'
+
     for (let i = 0; i < columns.length; i++) {
         const itemNeed: IColumn = {
             key: `column${i + 2}`,
             name: columns[i].Title,
-            fieldName: columns[i].TypeDisplayName !== "Person or Group" ? columns[i].EntityPropertyName : columns[i].EntityPropertyName + 'Id',
+            fieldName: checkFieldName(columns[i].TypeDisplayName, columns[i].EntityPropertyName),
             minWidth: 100,
             maxWidth: 200,
             isResizable: true,
@@ -226,20 +255,6 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
         _columns.push(itemNeed)
     }
 
-    const handleSort = (columnName: string, isSortedDescending: boolean) => {
-        const sortedItems = [...detailList].sort((a, b) => {
-            if (a[columnName] < b[columnName]) {
-                return isSortedDescending ? 1 : -1;
-            }
-            if (a[columnName] > b[columnName]) {
-                return isSortedDescending ? -1 : 1;
-            }
-            return 0;
-        });
-
-        setDetailList(sortedItems);
-    }
-
     const menuItems = (columnName: string): IContextualMenuItem[] => [
         {
             key: 'atoz',
@@ -269,6 +284,11 @@ const TableDataFL: React.FC<TableDataFLProps> = ({ title }) => {
             const response = await pnp.sp.web.lists.getByTitle(title).items.get();
             setDetailList(response)
             setTemp(response)
+
+            const items = await pnp.sp.web.lists.getByTitle(title).items.select('Title', 'DepartmentName/Title').expand("DepartmentName").get();
+            items.forEach((element: any) => {
+                console.log(element.DepartmentName.Title)
+            });
         } catch (error) {
             console.error('Error fetching tickets:', error);
         }
